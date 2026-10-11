@@ -96,8 +96,27 @@ Step "Install dependencies (this takes a few minutes)"
 pnpm install --frozen-lockfile
 
 Step "Start PostgreSQL, Redis and SeaweedFS containers"
+# Pull images first with retries: a dropped download is the most common failure on slow connections.
+$prev = $ErrorActionPreference; $ErrorActionPreference = "Continue"
+$pulled = $false
+for ($attempt = 1; $attempt -le 5 -and -not $pulled; $attempt++) {
+  Write-Host "Pulling container images (attempt $attempt of 5)..."
+  & docker compose -f compose.dev.yml pull postgres redis seaweedfs seaweedfs_create_bucket
+  if ($LASTEXITCODE -eq 0) { $pulled = $true } else { Start-Sleep -Seconds 5 }
+}
+$ErrorActionPreference = $prev
+if (-not $pulled) { throw "Could not download the container images after 5 attempts. Check your internet connection and re-run this script." }
 docker compose -f compose.dev.yml up -d postgres redis seaweedfs seaweedfs_create_bucket
+Write-Host "Waiting for PostgreSQL to become healthy..."
+$healthy = $false
+for ($i = 0; $i -lt 36 -and -not $healthy; $i++) {
+  Start-Sleep -Seconds 5
+  $state = (docker inspect --format '{{.State.Health.Status}}' reactive_resume-postgres-1 2>$null)
+  if ($state -eq "healthy") { $healthy = $true } else { Write-Host -NoNewline "." }
+}
+Write-Host ""
 docker compose -f compose.dev.yml ps
+if (-not $healthy) { throw "PostgreSQL did not become healthy in 3 minutes. Run 'docker compose -f compose.dev.yml logs postgres' in $Target and paste the output to Claude." }
 
 Step "Write .env.local"
 if (-not (Test-Path ".env.local")) {
