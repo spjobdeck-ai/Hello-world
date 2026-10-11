@@ -4,7 +4,7 @@ Steps to run [Reactive Resume](https://github.com/reactive-resume/reactive-resum
 
 ## Fastest path: run the setup script
 
-**Windows (PowerShell, run as your normal user):**
+**Windows:** from Command Prompt or File Explorer, run `setup-windows.cmd`. From PowerShell:
 
 ```powershell
 Set-ExecutionPolicy -Scope Process Bypass
