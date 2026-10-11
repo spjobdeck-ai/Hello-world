@@ -55,7 +55,11 @@ if (-not (Have docker)) {
   Write-Host "Docker Desktop was installed. Open it once, finish its setup (WSL 2 may require a reboot), then re-run this script." -ForegroundColor Yellow
   exit 0
 }
-function DockerUp { docker info *> $null; return ($LASTEXITCODE -eq 0) }
+function DockerUp {
+  # docker prints to stderr when the engine is down; don't let strict mode turn that into an exception.
+  $prev = $ErrorActionPreference; $ErrorActionPreference = "Continue"
+  try { $null = & docker info 2>&1; return ($LASTEXITCODE -eq 0) } catch { return $false } finally { $ErrorActionPreference = $prev }
+}
 if (-not (DockerUp)) {
   $dd = Join-Path $env:ProgramFiles "Docker\Docker\Docker Desktop.exe"
   if (Test-Path $dd) {
@@ -99,5 +103,5 @@ if (-not (Test-Path ".env.local")) {
 }
 
 Write-Host "`nSetup complete." -ForegroundColor Green
-Write-Host "Start the app from a PowerShell window (not Command Prompt) with:`n    cd `"$Target`"`n    pnpm dev"
+Write-Host "Start the app by running start-app.cmd in this folder, or from PowerShell with:`n    cd `"$Target`"`n    pnpm dev"
 Write-Host "Then open http://localhost:3000 and sign up. The verification link is printed in the pnpm dev terminal."

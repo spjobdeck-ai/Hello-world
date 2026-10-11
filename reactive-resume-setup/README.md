@@ -18,6 +18,8 @@ chmod +x setup-unix.sh
 ./setup-unix.sh
 ```
 
+On Windows, `start-app.cmd` then starts the app (double-click it or run it from Command Prompt).
+
 Both scripts install missing prerequisites where they can, clone the repo into `~/reactive-resume`, install dependencies, start the database containers, write `.env.local` with fresh secrets, and tell you the final command to run. Pass a folder as the first argument to clone somewhere else.
 
 Docker Desktop is the one thing a script can't finish for you on Windows or macOS: after it installs, open Docker Desktop once, let it finish starting, then re-run the script.
