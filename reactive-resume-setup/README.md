@@ -18,7 +18,7 @@ chmod +x setup-unix.sh
 ./setup-unix.sh
 ```
 
-On Windows, `start-app.cmd` then starts the app (double-click it or run it from Command Prompt).
+On Windows, `start-app.cmd` then starts the app in two windows, one for the API server and one for the web app (double-click it or run it from Command Prompt). It runs the server without file watching, which avoids a stall seen under `pnpm dev` on some Windows machines.
 
 Both scripts install missing prerequisites where they can, clone the repo into `~/reactive-resume`, install dependencies, start the database containers, write `.env.local` with fresh secrets, and tell you the final command to run. Pass a folder as the first argument to clone somewhere else.
 
