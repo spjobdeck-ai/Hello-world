@@ -53,7 +53,7 @@ Step "Docker Desktop"
 if (-not (Have docker)) {
   winget install --id Docker.DockerDesktop -e --accept-source-agreements --accept-package-agreements
   Write-Host "Docker Desktop was installed. Open it once, finish its setup (WSL 2 may require a reboot), then re-run this script." -ForegroundColor Yellow
-  exit 0
+  exit 1
 }
 function DockerUp {
   # docker prints to stderr when the engine is down; don't let strict mode turn that into an exception.
@@ -70,9 +70,20 @@ if (-not (DockerUp)) {
   }
   if (-not (DockerUp)) {
     Write-Host "Docker's engine is still not running." -ForegroundColor Yellow
-    Write-Host "Open Docker Desktop and look at its window: accept the agreement, and if it asks to install or update WSL 2, run 'wsl --install' in an Administrator PowerShell and restart Windows."
+    $prev = $ErrorActionPreference; $ErrorActionPreference = "Continue"
+    $null = & wsl --status 2>&1; $wslOk = ($LASTEXITCODE -eq 0)
+    $ErrorActionPreference = $prev
+    if (-not $wslOk) {
+      Write-Host "Windows Subsystem for Linux (WSL) is not installed. Docker Desktop needs it." -ForegroundColor Yellow
+      Write-Host "Installing WSL now. Approve the administrator prompt that appears..."
+      Start-Process powershell -Verb RunAs -Wait -ArgumentList '-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', 'wsl --install --no-distribution; Write-Host ""; Write-Host "WSL install finished. Close this window, then RESTART WINDOWS." -ForegroundColor Green; Read-Host "Press Enter to close"'
+      Write-Host ""
+      Write-Host "RESTART WINDOWS now, then run the setup command again. Docker Desktop will start on its own after the restart." -ForegroundColor Green
+      exit 1
+    }
+    Write-Host "WSL is installed, so look at the Docker Desktop window: accept the agreement, press Skip on the sign-in screen, and if it shows an error, paste it to Claude."
     Write-Host "Once Docker Desktop shows 'Engine running', re-run this script."
-    exit 0
+    exit 1
   }
 }
 docker --version
