@@ -55,10 +55,23 @@ if (-not (Have docker)) {
   Write-Host "Docker Desktop was installed. Open it once, finish its setup (WSL 2 may require a reboot), then re-run this script." -ForegroundColor Yellow
   exit 0
 }
-try { docker info *> $null } catch {
-  Write-Host "Docker is installed but not running. Start Docker Desktop, wait until it says 'Engine running', then re-run this script." -ForegroundColor Yellow
-  exit 0
+function DockerUp { docker info *> $null; return ($LASTEXITCODE -eq 0) }
+if (-not (DockerUp)) {
+  $dd = Join-Path $env:ProgramFiles "Docker\Docker\Docker Desktop.exe"
+  if (Test-Path $dd) {
+    Write-Host "Starting Docker Desktop and waiting for the engine (up to 4 minutes)..."
+    Start-Process $dd | Out-Null
+    for ($i = 0; $i -lt 48 -and -not (DockerUp); $i++) { Start-Sleep -Seconds 5; Write-Host -NoNewline "." }
+    Write-Host ""
+  }
+  if (-not (DockerUp)) {
+    Write-Host "Docker's engine is still not running." -ForegroundColor Yellow
+    Write-Host "Open Docker Desktop and look at its window: accept the agreement, and if it asks to install or update WSL 2, run 'wsl --install' in an Administrator PowerShell and restart Windows."
+    Write-Host "Once Docker Desktop shows 'Engine running', re-run this script."
+    exit 0
+  }
 }
+docker --version
 
 Step "Clone repository into $Target"
 if (-not (Test-Path (Join-Path $Target ".git"))) { git clone $RepoUrl $Target }
