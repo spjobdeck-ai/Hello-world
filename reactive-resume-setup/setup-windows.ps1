@@ -7,7 +7,8 @@ $RepoUrl = "https://github.com/reactive-resume/reactive-resume.git"
 function Step($msg) { Write-Host "`n==> $msg" -ForegroundColor Cyan }
 function Have($cmd) { return [bool](Get-Command $cmd -ErrorAction SilentlyContinue) }
 function RefreshPath {
-  $env:Path = [Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [Environment]::GetEnvironmentVariable("Path", "User")
+  # Append newly installed tools without dropping paths fnm added to this session.
+  $env:Path = $env:Path + ";" + [Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [Environment]::GetEnvironmentVariable("Path", "User")
 }
 function RandomHex($bytes) {
   $buf = New-Object byte[] $bytes
@@ -28,12 +29,24 @@ if (-not (Have fnm)) { winget install --id Schniz.fnm -e --accept-source-agreeme
 fnm install 24
 fnm env --use-on-cd --shell power-shell | Out-String | Invoke-Expression
 fnm use 24
+fnm default 24
+# Make Node 24 available in every future PowerShell window.
+$fnmInit = 'fnm env --use-on-cd --shell power-shell | Out-String | Invoke-Expression'
+if (-not (Test-Path $PROFILE)) { New-Item -ItemType File -Path $PROFILE -Force | Out-Null }
+if (-not (Select-String -Path $PROFILE -Pattern 'fnm env' -Quiet)) { Add-Content -Path $PROFILE -Value $fnmInit }
 $nodeMajor = (node -p "process.versions.node.split('.')[0]")
 if ($nodeMajor -ne "24") { throw "Node.js 24 is required, found $(node --version). Run 'fnm use 24' and retry." }
 node --version
 
 Step "pnpm"
-if (-not (Have pnpm)) { npm install -g pnpm; RefreshPath }
+if (-not (Have pnpm)) {
+  # Newer npm refuses pnpm's install scripts unless allowed explicitly.
+  npm install -g pnpm --allow-scripts=pnpm
+  if (-not (Have pnpm)) { npm install -g pnpm }
+  if (-not (Have pnpm)) { corepack enable pnpm }
+  RefreshPath
+}
+if (-not (Have pnpm)) { throw "pnpm did not install. Run 'npm install -g pnpm --allow-scripts=pnpm' manually, then re-run this script." }
 pnpm --version
 
 Step "Docker Desktop"
@@ -73,5 +86,5 @@ if (-not (Test-Path ".env.local")) {
 }
 
 Write-Host "`nSetup complete." -ForegroundColor Green
-Write-Host "Start the app with:`n    cd `"$Target`"`n    pnpm dev"
+Write-Host "Start the app from a PowerShell window (not Command Prompt) with:`n    cd `"$Target`"`n    pnpm dev"
 Write-Host "Then open http://localhost:3000 and sign up. The verification link is printed in the pnpm dev terminal."
